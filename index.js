@@ -66,6 +66,7 @@ const checkAuth = (req, res, next) => {
 
 // --- 3. ROTAS DO SITE ---
 app.get('/', (req, res) => res.redirect('/login.html'));
+
 app.post('/login', (req, res) => {
     const { username, password } = req.body;
     if (username === process.env.ADMIN_USER && password === process.env.ADMIN_PASS) {
@@ -76,8 +77,11 @@ app.post('/login', (req, res) => {
         res.status(401).json({ message: 'Usuário ou senha inválidos.' });
     }
 });
+
 app.get('/logout', (req, res) => {
-    req.session.destroy(() => res.redirect('/login.html'));
+    req.session.destroy(() => {
+        res.redirect('/login.html');
+    });
 });
 
 // Protege o acesso direto às páginas do painel
@@ -86,18 +90,20 @@ app.use('/config.html', checkAuth);
 app.use('/ticket.html', checkAuth);
 
 // --- 4. ROTAS DA API (PROTEGIDAS) ---
+
+// ROTA ATUALIZADA: Agora apenas lê do cache, sem `fetch`
 app.get('/api/members', checkAuth, async (req, res) => {
     try {
         const guild = await client.guilds.fetch(process.env.guildId);
-        await guild.members.fetch({ force: true });
+        // Apenas lemos o que já está na memória do bot.
         const memberList = guild.members.cache
             .filter(member => !member.user.bot)
             .map(member => ({ id: member.id, tag: member.user.tag }))
             .sort((a, b) => a.tag.localeCompare(b.tag));
         res.json(memberList);
     } catch (error) {
-        console.error("Erro ao buscar membros:", error);
-        res.status(500).json({ message: "Erro ao buscar membros." });
+        console.error("Erro ao buscar membros do cache:", error);
+        res.status(500).json({ message: "Erro ao ler a lista de membros." });
     }
 });
 
@@ -107,29 +113,41 @@ app.post('/api/punir', checkAuth, async (req, res) => {
         const { userId, punishment, duration, reason, evidence } = req.body;
         const moderator = req.session.username;
 
-        if (!userId || !punishment || !reason) return res.status(400).json({ message: 'Campos obrigatórios faltando.' });
+        if (!userId || !punishment || !reason) {
+            return res.status(400).json({ message: 'Campos obrigatórios faltando.' });
+        }
 
         const guild = await client.guilds.fetch(process.env.guildId);
         const member = await guild.members.fetch(userId);
         const punishmentChannel = await guild.channels.fetch(settings.punishmentChannelId);
 
-        if (!member) return res.status(404).json({ message: 'Membro não encontrado.' });
-        if (!punishmentChannel) return res.status(404).json({ message: 'Canal de log não configurado ou inválido.' });
+        if (!member) {
+            return res.status(404).json({ message: 'Membro não encontrado.' });
+        }
+        if (!punishmentChannel) {
+            return res.status(404).json({ message: 'Canal de log não configurado ou inválido.' });
+        }
         
         const embed = new EmbedBuilder()
-            .setColor('#E74C3C').setTitle('Ação de Moderação Registrada')
+            .setColor('#E74C3C')
+            .setTitle('Ação de Moderação Registrada')
             .addFields(
                 { name: 'Membro Punido', value: member.user.tag, inline: true },
                 { name: 'Aplicado por', value: moderator, inline: true },
                 { name: 'Ação', value: punishment.charAt(0).toUpperCase() + punishment.slice(1), inline: true },
                 { name: 'Motivo', value: reason }
-            ).setTimestamp();
+            )
+            .setTimestamp();
         
-        if (evidence) embed.addFields({ name: 'Evidência', value: `[Clique para ver](${evidence})` });
+        if (evidence) {
+            embed.addFields({ name: 'Evidência', value: `[Clique para ver](${evidence})` });
+        }
 
         if (punishment === 'timeout') {
             const minutes = parseInt(duration);
-            if (!minutes || minutes <= 0 || isNaN(minutes)) return res.status(400).json({ message: 'Duração inválida.' });
+            if (!minutes || minutes <= 0 || isNaN(minutes)) {
+                return res.status(400).json({ message: 'Duração inválida.' });
+            }
             await member.timeout(minutes * 60 * 1000, reason);
             embed.addFields({ name: 'Duração', value: `${minutes} minuto(s)` });
         } else if (punishment === 'kick') {
@@ -140,6 +158,7 @@ app.post('/api/punir', checkAuth, async (req, res) => {
 
         await punishmentChannel.send({ embeds: [embed] });
         res.status(200).json({ message: `Sucesso! ${member.user.tag} foi punido.` });
+
     } catch (error) {
         console.error('ERRO AO PUNIR:', error);
         res.status(500).json({ message: 'Erro interno. Verifique as permissões do bot.' });
@@ -191,9 +210,19 @@ client.on('interactionCreate', async interaction => {
     }
 });
 
-client.once('ready', () => {
+// EVENTO READY ATUALIZADO: Agora ele popula o cache na inicialização
+client.once('ready', async () => {
     console.log(`[BOT] Conectado como ${client.user.tag}.`);
     client.user.setActivity('Painel de Moderação', { type: ActivityType.Watching });
+
+    try {
+        console.log('[CACHE] Iniciando o cache de membros do servidor...');
+        const guild = await client.guilds.fetch(process.env.guildId);
+        await guild.members.fetch({ force: true });
+        console.log(`[CACHE] Sucesso! ${guild.members.cache.size} membros foram carregados na memória.`);
+    } catch (error) {
+        console.error('[CACHE] Falha crítica ao carregar membros no cache:', error.message);
+    }
 });
 
 

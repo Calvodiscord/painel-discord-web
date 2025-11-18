@@ -1,69 +1,99 @@
 document.addEventListener('DOMContentLoaded', () => {
-    const memberSelect = document.getElementById('username');
-    const form = document.querySelector('form');
+    const settingsForm = document.getElementById('settings-form');
+    const ticketSetupForm = document.getElementById('ticket-setup-form');
     const responseDiv = document.getElementById('response');
+    
+    const prefixInput = document.getElementById('prefix-input');
+    const logChannelSelect = document.getElementById('channel-select');
+    const panelChannelSelect = document.getElementById('ticket-channel-select');
+    const categorySelect = document.getElementById('ticket-category-select');
 
-    async function fetchAndPopulateMembers() {
+    async function initializeConfig() {
         try {
-            const response = await fetch('/api/members');
-            if (!response.ok) {
-                const result = await response.json();
-                throw new Error(result.message || 'Falha ao buscar membros.');
+            const [settingsRes, textChannelsRes, categoriesRes] = await Promise.all([
+                fetch('/api/settings'),
+                fetch('/api/channels?type=text'),
+                fetch('/api/channels?type=category')
+            ]);
+            
+            if (!settingsRes.ok || !textChannelsRes.ok || !categoriesRes.ok) {
+                throw new Error("Falha ao buscar dados do servidor.");
             }
             
-            const members = await response.json();
-            
-            memberSelect.innerHTML = '';
-            
-            const defaultOption = document.createElement('option');
-            defaultOption.value = "";
-            defaultOption.textContent = "Selecione um membro da lista";
-            defaultOption.disabled = true;
-            defaultOption.selected = true;
-            memberSelect.appendChild(defaultOption);
+            const settings = await settingsRes.json();
+            const textChannels = await textChannelsRes.json();
+            const categories = await categoriesRes.json();
 
-            members.forEach(member => {
-                const option = document.createElement('option');
-                option.value = member.id;
-                option.textContent = member.tag;
-                memberSelect.appendChild(option);
-            });
+            const populateSelect = (select, options, selectedId, defaultText) => {
+                select.innerHTML = `<option value="">${defaultText}</option>`;
+                options.forEach(opt => {
+                    const option = document.createElement('option');
+                    option.value = opt.id;
+                    option.textContent = `#${opt.name}`;
+                    if (opt.id === selectedId) option.selected = true;
+                    select.appendChild(option);
+                });
+            };
+
+            prefixInput.value = settings.prefix || '';
+            populateSelect(logChannelSelect, textChannels, settings.punishmentChannelId, 'Selecione um canal de log');
+            populateSelect(panelChannelSelect, textChannels, settings.ticketPanelChannelId, 'Selecione um canal para o painel');
+            populateSelect(categorySelect, categories, settings.ticketCategoryId, 'Selecione uma categoria para os tickets');
 
         } catch (error) {
-            console.error("Erro ao carregar membros:", error);
-            memberSelect.innerHTML = `<option value="" disabled selected>${error.message}</option>`;
+            console.error("Erro ao inicializar configurações:", error);
+            responseDiv.textContent = error.message;
+            responseDiv.className = 'response-box error visible';
         }
     }
-    
-    fetchAndPopulateMembers();
 
-    form.addEventListener('submit', async (e) => {
+    initializeConfig();
+
+    settingsForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const formData = new FormData(form);
-        const data = Object.fromEntries(formData.entries());
+        const data = {
+            prefix: prefixInput.value,
+            punishmentChannelId: logChannelSelect.value
+        };
         
-        responseDiv.textContent = 'Processando punição...';
+        responseDiv.textContent = 'Salvando...';
         responseDiv.className = 'response-box visible';
 
-        try {
-            const response = await fetch('/api/punir', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
-            });
-            
-            const result = await response.json();
-            responseDiv.textContent = result.message;
-            responseDiv.classList.add(response.ok ? 'success' : 'error');
-            
-            if (response.ok) {
-                form.reset();
-                const placeholder = memberSelect.querySelector('option[disabled]');
-                if (placeholder) placeholder.selected = true;
-            }
-        } catch (error) {
-            responseDiv.textContent = 'Erro de comunicação com o servidor.';
-            responseDiv.classList.add('error');
-        }
+        const response = await fetch('/api/settings/save', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+        responseDiv.textContent = result.message;
+        responseDiv.classList.add(response.ok ? 'success' : 'error');
+    });
+    
+    ticketSetupForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const data = {
+            ticketPanelChannelId: panelChannelSelect.value,
+            ticketCategoryId: categorySelect.value
+        };
+        
+        responseDiv.textContent = 'Configurando painel...';
+        responseDiv.className = 'response-box visible';
+
+        await fetch('/api/settings/save', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+
+        const response = await fetch('/api/setup-ticket', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ channelId: data.ticketPanelChannelId })
+        });
+        
+        const result = await response.json();
+        responseDiv.textContent = result.message;
+        responseDiv.classList.add(response.ok ? 'success' : 'error');
     });
 });

@@ -3,7 +3,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const form = document.querySelector('form');
     const responseDiv = document.getElementById('response');
 
-    // Função para buscar e popular a lista de membros do servidor
     async function fetchAndPopulateMembers() {
         try {
             const response = await fetch('/api/members');
@@ -38,7 +37,6 @@ document.addEventListener('DOMContentLoaded', () => {
     
     fetchAndPopulateMembers();
 
-    // Evento que dispara quando o formulário de punição é enviado
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
         const formData = new FormData(form);

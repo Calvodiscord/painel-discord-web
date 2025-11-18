@@ -1,1 +1,26 @@
-
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configurações - Painel de Moderação</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="nav-container"></div>
+    <div class="container">
+        <h1>Configurações do Servidor</h1>
+        <h2>Defina as preferências do bot</h2>
+        <form>
+            <label for="channel-select">Canal de Logs de Punição</label>
+            <select id="channel-select" name="punishmentChannelId" required>
+                <option value="" disabled selected>Carregando canais...</option>
+            </select>
+            <button type="submit">Salvar Configurações</button>
+        </form>
+        <div id="response" class="response-box"></div>
+    </div>
+    <script src="/js/main.js"></script>
+    <script src="/js/config.js"></script>
+</body>
+</html>

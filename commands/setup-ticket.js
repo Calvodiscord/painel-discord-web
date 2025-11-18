@@ -22,7 +22,12 @@ module.exports = {
         
         const row = new ActionRowBuilder().addComponents(normalButton, aiButton, staffButton);
 
-        await interaction.channel.send({ embeds: [embed], components: [row] });
-        await interaction.reply({ content: '✅ Painel de tickets avançado criado com sucesso!', ephemeral: true });
+        try {
+            await interaction.channel.send({ embeds: [embed], components: [row] });
+            await interaction.reply({ content: '✅ Painel de tickets avançado criado com sucesso!', ephemeral: true });
+        } catch (error) {
+            console.error("Erro ao criar painel de ticket:", error);
+            await interaction.reply({ content: '❌ Falha ao criar o painel. Verifique as permissões do bot neste canal.', ephemeral: true });
+        }
     },
 };

@@ -22,9 +22,13 @@
                 <button class="close-modal-btn">&times;</button>
             </div>
             <div class="chat-history" id="chat-history"></div>
+            <div class="reply-toolbar">
+                <button id="ai-reply-btn" title="Sugerir resposta com IA">🤖 Responder com IA</button>
+                <button id="add-link-btn" title="Adicionar um link">🔗 Adicionar Link</button>
+            </div>
             <form id="reply-form">
-                <input type="text" id="reply-input" placeholder="Digite sua resposta..." required>
-                <button type="submit">Enviar</button>
+                <textarea id="reply-input" placeholder="Digite sua resposta..." required rows="3"></textarea>
+                <button type="submit">Enviar Resposta</button>
             </form>
         </div>
     </div>

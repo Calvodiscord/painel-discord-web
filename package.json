@@ -1,0 +1,13 @@
+{
+  "name": "painel-profissional-render",
+  "version": "2.0.0",
+  "description": "Painel profissional para moderação no Discord.",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "discord.js": "^14.7.1",
+    "express": "^4.18.2"
+  }
+}

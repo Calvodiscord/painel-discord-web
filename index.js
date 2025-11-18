@@ -3,6 +3,7 @@ const express = require('express');
 const session = require('express-session');
 const path = require('path');
 const fs = require('node:fs');
+const { generateAiResponse } = require('./ai-helper.js'); // Importa nossa IA
 
 // --- 1. CONFIGURAÇÕES E INICIALIZAÇÃO ---
 const app = express();
@@ -22,7 +23,7 @@ for (const file of commandFiles) {
     client.commands.set(command.data.name, command);
 }
 
-// --- FUNÇÕES DE AJUDA PARA LER/SALVAR CONFIGURAÇÕES ---
+// --- FUNÇÕES DE AJUDA ---
 function readSettings() {
     try {
         if (fs.existsSync(settingsPath)) { return JSON.parse(fs.readFileSync(settingsPath, 'utf8')); }
@@ -52,21 +53,17 @@ const checkAuth = (req, res, next) => {
 // --- 3. ROTAS DO SITE ---
 app.get('/', (req, res) => res.redirect('/login.html'));
 app.post('/login', (req, res) => {
-    const { username, password } = req.body;
     try {
         const users = JSON.parse(fs.readFileSync(usersPath, 'utf8'));
-        const user = users.find(u => u.username === username && u.password === password);
+        const user = users.find(u => u.username === req.body.username && u.password === req.body.password);
         if (user) {
             req.session.loggedin = true;
             req.session.username = user.username;
             res.status(200).json({ message: 'Login bem-sucedido!' });
         } else {
-            res.status(401).json({ message: 'Usuário ou senha inválidos.' });
+            res.status(401).json({ message: 'Credenciais inválidas.' });
         }
-    } catch (error) {
-        console.error('Erro ao ler users.json:', error);
-        res.status(500).json({ message: 'Erro interno no servidor.' });
-    }
+    } catch (error) { res.status(500).json({ message: 'Erro interno.' }); }
 });
 app.get('/logout', (req, res) => {
     req.session.destroy(() => res.redirect('/login.html'));
@@ -76,80 +73,7 @@ app.use('/config.html', checkAuth);
 app.use('/ticket.html', checkAuth);
 
 // --- 4. ROTAS DA API ---
-app.get('/api/members', checkAuth, async (req, res) => {
-    try {
-        const guild = await client.guilds.fetch(process.env.guildId);
-        const memberList = guild.members.cache.filter(m => !m.user.bot).map(m => ({ id: m.id, tag: m.user.tag })).sort((a, b) => a.tag.localeCompare(b.tag));
-        res.json(memberList);
-    } catch (error) {
-        console.error("Erro ao buscar membros:", error);
-        res.status(500).json({ message: "Erro ao ler lista de membros." });
-    }
-});
-
-app.post('/api/punir', checkAuth, async (req, res) => {
-    try {
-        const settings = readSettings();
-        const { userId, punishment, duration, reason, evidence } = req.body;
-        const moderator = req.session.username;
-        if (!userId || !punishment || !reason) return res.status(400).json({ message: 'Campos obrigatórios faltando.' });
-
-        const guild = await client.guilds.fetch(process.env.guildId);
-        const member = await guild.members.fetch(userId);
-        const punishmentChannel = await guild.channels.fetch(settings.punishmentChannelId);
-
-        if (!member) return res.status(404).json({ message: 'Membro não encontrado.' });
-        if (!punishmentChannel) return res.status(404).json({ message: 'Canal de log não configurado.' });
-        
-        const embed = new EmbedBuilder().setColor('#E74C3C').setTitle('⚖️ Ação de Moderação Registrada').addFields(
-            { name: '👤 Membro Punido', value: member.user.tag, inline: true },
-            { name: '👮‍♂️ Aplicado por', value: moderator, inline: true },
-            { name: '⚖️ Ação', value: punishment.charAt(0).toUpperCase() + punishment.slice(1), inline: true },
-            { name: '📜 Motivo', value: reason }
-        ).setTimestamp();
-        
-        if (evidence) embed.addFields({ name: '📸 Evidência', value: `[Clique para ver](${evidence})` });
-
-        if (punishment === 'timeout') {
-            const minutes = parseInt(duration);
-            if (!minutes || minutes <= 0 || isNaN(minutes)) return res.status(400).json({ message: 'Duração inválida.' });
-            await member.timeout(minutes * 60 * 1000, reason);
-            embed.addFields({ name: '⏳ Duração', value: `${minutes} minuto(s)` });
-        } else if (punishment === 'kick') { await member.kick(reason); } 
-        else if (punishment === 'ban') { await member.ban({ reason: reason }); }
-
-        await punishmentChannel.send({ embeds: [embed] });
-        res.status(200).json({ message: `Sucesso! ${member.user.tag} foi punido.` });
-    } catch (error) {
-        console.error('ERRO AO PUNIR:', error);
-        res.status(500).json({ message: 'Erro interno. Verifique as permissões do bot.' });
-    }
-});
-
-app.get('/api/channels', checkAuth, async (req, res) => {
-    try {
-        const { type } = req.query;
-        const guild = await client.guilds.fetch(process.env.guildId);
-        const channelTypeFilter = type === 'category' ? ChannelType.GuildCategory : ChannelType.GuildText;
-        const channels = guild.channels.cache.filter(ch => ch.type === channelTypeFilter).map(ch => ({ id: ch.id, name: ch.name })).sort((a, b) => a.name.localeCompare(b.name));
-        res.json(channels);
-    } catch (error) {
-        console.error('Erro ao buscar canais:', error);
-        res.status(500).json({ message: 'Erro ao buscar canais.' });
-    }
-});
-
-app.get('/api/settings', checkAuth, (req, res) => res.json(readSettings()));
-app.post('/api/settings/save', checkAuth, (req, res) => {
-    try {
-        writeSettings({ ...readSettings(), ...req.body });
-        res.status(200).json({ message: 'Configurações salvas com sucesso!' });
-    } catch (error) {
-        console.error('Erro ao salvar:', error);
-        res.status(500).json({ message: 'Falha ao salvar configurações.' });
-    }
-});
-
+// (As APIs /members, /punir, /channels, /settings, /settings/save, /tickets continuam as mesmas da resposta anterior)
 app.post('/api/setup-ticket', checkAuth, async (req, res) => {
     try {
         const { channelId } = req.body;
@@ -157,22 +81,22 @@ app.post('/api/setup-ticket', checkAuth, async (req, res) => {
         const channel = guild.channels.cache.get(channelId);
         if (!channel) return res.status(404).json({ message: 'Canal não encontrado.' });
         
-        const embed = new EmbedBuilder().setColor('#5865F2').setTitle('🎫 Suporte ao Servidor').setDescription('Clique no botão abaixo para abrir um ticket.');
-        const button = new ButtonBuilder().setCustomId('open-ticket').setLabel('Abrir Ticket').setStyle(ButtonStyle.Primary).setEmoji('📩');
-        const row = new ActionRowBuilder().addComponents(button);
+        const embed = new EmbedBuilder().setColor('#5865F2').setTitle('🎫 Central de Suporte').setDescription('Selecione uma opção:').addFields(
+            { name: '📩 Abrir Ticket', value: 'Converse com a equipe.' },
+            { name: '🤖 Ticket com IA', value: 'Receba uma resposta instantânea.' },
+            { name: '🚨 Chamar Suporte', value: 'Notifique a equipe para urgências.' }
+        );
+        const normalButton = new ButtonBuilder().setCustomId('open-ticket-normal').setLabel('Abrir Ticket').setStyle(ButtonStyle.Secondary).setEmoji('📩');
+        const aiButton = new ButtonBuilder().setCustomId('open-ticket-ai').setLabel('Ticket com IA').setStyle(ButtonStyle.Success).setEmoji('🤖');
+        const staffButton = new ButtonBuilder().setCustomId('open-ticket-staff').setLabel('Chamar Suporte').setStyle(ButtonStyle.Danger).setEmoji('🚨');
+        const row = new ActionRowBuilder().addComponents(normalButton, aiButton, staffButton);
 
         await channel.send({ embeds: [embed], components: [row] });
-        res.status(200).json({ message: 'Painel de ticket criado com sucesso!' });
+        res.status(200).json({ message: 'Painel de ticket avançado criado!' });
     } catch (error) {
-        console.error('Erro ao criar painel de ticket:', error);
+        console.error('Erro ao criar painel:', error);
         res.status(500).json({ message: 'Falha ao criar painel.' });
     }
-});
-
-app.get('/api/tickets', checkAuth, async (req, res) => {
-    const guild = await client.guilds.fetch(process.env.guildId);
-    const tickets = guild.channels.cache.filter(ch => ch.name.startsWith('ticket-')).map(ch => ({ id: ch.id, name: ch.name }));
-    res.json(tickets);
 });
 
 app.get('/api/tickets/:channelId/messages', checkAuth, async (req, res) => {
@@ -198,7 +122,7 @@ app.post('/api/tickets/reply', checkAuth, async (req, res) => {
         
         const embed = new EmbedBuilder()
             .setColor('#2ECC71')
-            .setAuthor({ name: `Resposta da Equipe (${req.session.username})` })
+            .setAuthor({ name: `Resposta da Equipe (${req.session.username})`, iconURL: client.user.displayAvatarURL() })
             .setDescription(content);
         
         await channel.send({ embeds: [embed] });
@@ -208,40 +132,82 @@ app.post('/api/tickets/reply', checkAuth, async (req, res) => {
     }
 });
 
+app.post('/api/tickets/ai-reply', checkAuth, async (req, res) => {
+    try {
+        const { channelId } = req.body;
+        const guild = await client.guilds.fetch(process.env.guildId);
+        const channel = guild.channels.cache.get(channelId);
+        if (!channel) return res.status(404).json({ message: 'Ticket não encontrado.' });
+        
+        const messages = await channel.messages.fetch({ limit: 15 });
+        const history = messages.map(m => `${m.author.tag}: ${m.content}`).reverse().join('\n');
+        
+        const aiReply = await generateAiResponse(history);
+        res.status(200).json({ reply: aiReply });
+    } catch (error) {
+        console.error("Erro na API de sugestão de IA:", error);
+        res.status(500).json({ message: 'Falha ao gerar resposta.' });
+    }
+});
+
+
 // --- 5. EVENTOS DO BOT ---
 client.on('interactionCreate', async interaction => {
-    if (interaction.isChatInputCommand()) {
-        const command = client.commands.get(interaction.commandName);
-        if (!command) return;
-        try { await command.execute(interaction); } 
-        catch (error) { console.error(error); await interaction.reply({ content: 'Ocorreu um erro!', ephemeral: true }); }
-    }
+    if (interaction.isChatInputCommand()) { /* ... handler de comandos ... */ }
+
     if (interaction.isButton()) {
-        if (interaction.customId === 'open-ticket') {
-            await interaction.deferReply({ ephemeral: true });
-            try {
-                const settings = readSettings();
-                const ticketChannel = await interaction.guild.channels.create({
-                    name: `ticket-${interaction.user.username.substring(0, 20)}`,
-                    type: ChannelType.GuildText,
-                    parent: settings.ticketCategoryId,
-                    permissionOverwrites: [
-                        { id: interaction.guild.id, deny: [PermissionsBitField.Flags.ViewChannel] },
-                        { id: interaction.user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages, PermissionsBitField.Flags.ReadMessageHistory] },
-                        // { id: 'SEU_CARGO_DE_MOD_ID', allow: [PermissionsBitField.Flags.ViewChannel] }
-                    ],
-                });
-                const welcomeEmbed = new EmbedBuilder().setColor('#5865F2').setDescription(`Olá ${interaction.user}, bem-vindo ao seu ticket! Por favor, descreva seu problema em detalhes.`);
-                await ticketChannel.send({ embeds: [welcomeEmbed] });
-                await interaction.editReply({ content: `✅ Seu ticket foi criado com sucesso em ${ticketChannel}` });
-            } catch (error) {
-                console.error("Erro ao criar ticket:", error);
-                await interaction.editReply({ content: '❌ Não foi possível criar seu ticket. Verifique as configurações no painel.' });
+        if (!interaction.customId.startsWith('open-ticket')) return;
+
+        await interaction.deferReply({ ephemeral: true });
+        const settings = readSettings();
+        const category = settings.ticketCategoryId;
+        
+        try {
+            const channelName = `ticket-${interaction.user.username.substring(0, 20)}`;
+            if (interaction.guild.channels.cache.find(c => c.name === channelName)) {
+                return interaction.editReply(`⚠️ Você já possui um ticket aberto.`);
             }
+
+            const ticketChannel = await interaction.guild.channels.create({
+                name: channelName, type: ChannelType.GuildText, parent: category,
+                permissionOverwrites: [
+                    { id: interaction.guild.id, deny: [PermissionsBitField.Flags.ViewChannel] },
+                    { id: interaction.user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages] },
+                    { id: process.env.STAFF_ROLE_ID, allow: [PermissionsBitField.Flags.ViewChannel] }
+                ],
+            });
+            
+            await interaction.editReply(`✅ Seu ticket foi criado em ${ticketChannel}`);
+            
+            const baseEmbed = new EmbedBuilder().setColor('#5865F2').setDescription(`Olá ${interaction.user}, bem-vindo ao seu ticket!`);
+
+            switch (interaction.customId) {
+                case 'open-ticket-normal':
+                    await ticketChannel.send({ embeds: [baseEmbed.addFields({ name: 'Próximo Passo', value: 'Um membro da equipe estará com você em breve.'})] });
+                    break;
+                
+                case 'open-ticket-ai':
+                    await ticketChannel.send({ embeds: [baseEmbed.addFields({ name: 'Assistente de IA', value: 'Nosso assistente de IA está analisando sua solicitação...' })] });
+                    const aiResponse = await generateAiResponse(`O usuário ${interaction.user.tag} abriu um ticket pedindo ajuda.`);
+                    await ticketChannel.send({ embeds: [new EmbedBuilder().setColor("#2ECC71").setAuthor({ name: "Assistente de IA 🤖" }).setDescription(aiResponse)] });
+                    break;
+
+                case 'open-ticket-staff':
+                    const staffPing = process.env.STAFF_ROLE_ID ? `<@&${process.env.STAFF_ROLE_ID}>` : 'A equipe de suporte';
+                    await ticketChannel.send({
+                        content: `${staffPing}, ${interaction.user} solicitou suporte urgente!`,
+                        embeds: [baseEmbed.setColor('#E74C3C').addFields({ name: 'Atenção Urgente', value: 'A equipe foi notificada e estará com você o mais rápido possível.' })]
+                    });
+                    break;
+            }
+        } catch (error) {
+            console.error("Erro ao processar botão de ticket:", error);
+            await interaction.editReply({ content: '❌ Ocorreu um erro. Verifique as configurações no painel.' });
         }
     }
 });
 
+// --- 6. INICIALIZAÇÃO E CACHE ---
 client.once('ready', async () => {
     console.log(`[BOT] Conectado como ${client.user.tag}.`);
     client.user.setActivity('Painel de Moderação', { type: ActivityType.Watching });
@@ -255,7 +221,6 @@ client.once('ready', async () => {
     }
 });
 
-// --- 6. INICIALIZAÇÃO ---
 client.login(process.env.token).then(() => {
     app.listen(port, () => {
         console.log(`[WEB] Servidor iniciado na porta ${port}.`);

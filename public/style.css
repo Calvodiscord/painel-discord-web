@@ -1,0 +1,133 @@
+/* Importa uma fonte mais profissional do Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap');
+
+/* Variáveis de cor para fácil customização */
+:root {
+    --bg-color: #23272A;
+    --surface-color: #2C2F33;
+    --primary-color: #5865F2; /* Cor oficial do Discord (Blurple) */
+    --primary-hover: #4752C4;
+    --text-color: #FFFFFF;
+    --text-muted: #99AAB5;
+    --success-color: #43B581;
+    --error-color: #F04747;
+    --border-color: #40444B;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Poppins', sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 20px;
+}
+
+.container {
+    background-color: var(--surface-color);
+    padding: 30px;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    width: 100%;
+    max-width: 550px;
+    border-top: 4px solid var(--primary-color);
+}
+
+h1 {
+    text-align: center;
+    color: var(--text-color);
+    margin-bottom: 10px;
+    font-weight: 600;
+}
+
+h2 {
+    text-align: center;
+    color: var(--text-muted);
+    font-weight: 400;
+    font-size: 1rem;
+    margin-bottom: 30px;
+}
+
+form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px; /* Adiciona espaçamento entre os campos */
+}
+
+label {
+    margin-bottom: -10px;
+    font-weight: 500;
+    font-size: 0.9rem;
+}
+
+input,
+select,
+textarea {
+    width: 100%;
+    padding: 12px;
+    border-radius: 5px;
+    border: 1px solid var(--border-color);
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    font-size: 1rem;
+    font-family: 'Poppins', sans-serif;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(88, 101, 242, 0.3);
+}
+
+button {
+    background-color: var(--primary-color);
+    color: white;
+    font-weight: 600;
+    font-size: 1rem;
+    cursor: pointer;
+    margin-top: 20px;
+    border: none;
+    padding: 12px;
+    border-radius: 5px;
+    transition: background-color 0.2s;
+}
+
+button:hover {
+    background-color: var(--primary-hover);
+}
+
+#response {
+    margin-top: 20px;
+    text-align: center;
+    font-weight: 500;
+    padding: 12px;
+    border-radius: 5px;
+    min-height: 1.5em;
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+#response.visible {
+    opacity: 1;
+}
+
+#response.success {
+    color: #ffffff;
+    background-color: var(--success-color);
+}
+
+#response.error {
+    color: #ffffff;
+    background-color: var(--error-color);
+}

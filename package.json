@@ -1,7 +1,7 @@
 {
-  "name": "painel-ai-completo",
-  "version": "4.2.0",
-  "description": "Painel de moderação com IA, tickets interativos e sessões persistentes.",
+  "name": "painel-profissional-v6",
+  "version": "6.0.0",
+  "description": "Painel de moderação com design profissional, comandos e tickets interativos.",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",

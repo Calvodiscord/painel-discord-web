@@ -13,7 +13,6 @@ const client = new Client({
 const settingsPath = path.join(__dirname, 'settings.json');
 const usersPath = path.join(__dirname, 'users.json');
 
-// Carregador de Comandos de Barra
 client.commands = new Collection();
 const commandsPath = path.join(__dirname, 'commands');
 const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
@@ -80,10 +79,7 @@ app.use('/ticket.html', checkAuth);
 app.get('/api/members', checkAuth, async (req, res) => {
     try {
         const guild = await client.guilds.fetch(process.env.guildId);
-        const memberList = guild.members.cache
-            .filter(member => !member.user.bot)
-            .map(member => ({ id: member.id, tag: member.user.tag }))
-            .sort((a, b) => a.tag.localeCompare(b.tag));
+        const memberList = guild.members.cache.filter(m => !m.user.bot).map(m => ({ id: m.id, tag: m.user.tag })).sort((a, b) => a.tag.localeCompare(b.tag));
         res.json(memberList);
     } catch (error) {
         console.error("Erro ao buscar membros:", error);
@@ -96,7 +92,6 @@ app.post('/api/punir', checkAuth, async (req, res) => {
         const settings = readSettings();
         const { userId, punishment, duration, reason, evidence } = req.body;
         const moderator = req.session.username;
-
         if (!userId || !punishment || !reason) return res.status(400).json({ message: 'Campos obrigatórios faltando.' });
 
         const guild = await client.guilds.fetch(process.env.guildId);
@@ -106,15 +101,12 @@ app.post('/api/punir', checkAuth, async (req, res) => {
         if (!member) return res.status(404).json({ message: 'Membro não encontrado.' });
         if (!punishmentChannel) return res.status(404).json({ message: 'Canal de log não configurado.' });
         
-        const embed = new EmbedBuilder()
-            .setColor('#E74C3C')
-            .setTitle('⚖️ Ação de Moderação Registrada')
-            .addFields(
-                { name: '👤 Membro Punido', value: member.user.tag, inline: true },
-                { name: '👮‍♂️ Aplicado por', value: moderator, inline: true },
-                { name: '⚖️ Ação', value: punishment.charAt(0).toUpperCase() + punishment.slice(1), inline: true },
-                { name: '📜 Motivo', value: reason }
-            ).setTimestamp();
+        const embed = new EmbedBuilder().setColor('#E74C3C').setTitle('⚖️ Ação de Moderação Registrada').addFields(
+            { name: '👤 Membro Punido', value: member.user.tag, inline: true },
+            { name: '👮‍♂️ Aplicado por', value: moderator, inline: true },
+            { name: '⚖️ Ação', value: punishment.charAt(0).toUpperCase() + punishment.slice(1), inline: true },
+            { name: '📜 Motivo', value: reason }
+        ).setTimestamp();
         
         if (evidence) embed.addFields({ name: '📸 Evidência', value: `[Clique para ver](${evidence})` });
 
@@ -123,11 +115,8 @@ app.post('/api/punir', checkAuth, async (req, res) => {
             if (!minutes || minutes <= 0 || isNaN(minutes)) return res.status(400).json({ message: 'Duração inválida.' });
             await member.timeout(minutes * 60 * 1000, reason);
             embed.addFields({ name: '⏳ Duração', value: `${minutes} minuto(s)` });
-        } else if (punishment === 'kick') {
-            await member.kick(reason);
-        } else if (punishment === 'ban') {
-            await member.ban({ reason: reason });
-        }
+        } else if (punishment === 'kick') { await member.kick(reason); } 
+        else if (punishment === 'ban') { await member.ban({ reason: reason }); }
 
         await punishmentChannel.send({ embeds: [embed] });
         res.status(200).json({ message: `Sucesso! ${member.user.tag} foi punido.` });
@@ -139,8 +128,10 @@ app.post('/api/punir', checkAuth, async (req, res) => {
 
 app.get('/api/channels', checkAuth, async (req, res) => {
     try {
+        const { type } = req.query;
         const guild = await client.guilds.fetch(process.env.guildId);
-        const channels = guild.channels.cache.filter(ch => ch.type === ChannelType.GuildText).map(ch => ({ id: ch.id, name: ch.name })).sort((a, b) => a.name.localeCompare(b.name));
+        const channelTypeFilter = type === 'category' ? ChannelType.GuildCategory : ChannelType.GuildText;
+        const channels = guild.channels.cache.filter(ch => ch.type === channelTypeFilter).map(ch => ({ id: ch.id, name: ch.name })).sort((a, b) => a.name.localeCompare(b.name));
         res.json(channels);
     } catch (error) {
         console.error('Erro ao buscar canais:', error);
@@ -159,20 +150,61 @@ app.post('/api/settings/save', checkAuth, (req, res) => {
     }
 });
 
+app.post('/api/setup-ticket', checkAuth, async (req, res) => {
+    try {
+        const { channelId } = req.body;
+        const guild = await client.guilds.fetch(process.env.guildId);
+        const channel = guild.channels.cache.get(channelId);
+        if (!channel) return res.status(404).json({ message: 'Canal não encontrado.' });
+        
+        const embed = new EmbedBuilder().setColor('#5865F2').setTitle('🎫 Suporte ao Servidor').setDescription('Clique no botão abaixo para abrir um ticket.');
+        const button = new ButtonBuilder().setCustomId('open-ticket').setLabel('Abrir Ticket').setStyle(ButtonStyle.Primary).setEmoji('📩');
+        const row = new ActionRowBuilder().addComponents(button);
+
+        await channel.send({ embeds: [embed], components: [row] });
+        res.status(200).json({ message: 'Painel de ticket criado com sucesso!' });
+    } catch (error) {
+        console.error('Erro ao criar painel de ticket:', error);
+        res.status(500).json({ message: 'Falha ao criar painel.' });
+    }
+});
+
 app.get('/api/tickets', checkAuth, async (req, res) => {
     const guild = await client.guilds.fetch(process.env.guildId);
     const tickets = guild.channels.cache.filter(ch => ch.name.startsWith('ticket-')).map(ch => ({ id: ch.id, name: ch.name }));
     res.json(tickets);
 });
-app.post('/api/tickets/close', checkAuth, async (req, res) => {
-    const { channelId } = req.body;
-    const guild = await client.guilds.fetch(process.env.guildId);
-    const channel = guild.channels.cache.get(channelId);
-    if (channel) {
-        await channel.delete(`Ticket fechado por ${req.session.username} via painel.`);
-        res.status(200).json({ message: 'Ticket fechado.' });
-    } else {
-        res.status(404).json({ message: 'Canal não encontrado.' });
+
+app.get('/api/tickets/:channelId/messages', checkAuth, async (req, res) => {
+    try {
+        const guild = await client.guilds.fetch(process.env.guildId);
+        const channel = guild.channels.cache.get(req.params.channelId);
+        if (!channel) return res.status(404).json({ message: 'Ticket não encontrado.' });
+        
+        const messages = await channel.messages.fetch({ limit: 50 });
+        const history = messages.map(m => ({ author: m.author.tag, content: m.content })).reverse();
+        res.json(history);
+    } catch(error) {
+        res.status(500).json({ message: "Erro ao buscar mensagens." });
+    }
+});
+
+app.post('/api/tickets/reply', checkAuth, async (req, res) => {
+    try {
+        const { channelId, content } = req.body;
+        const guild = await client.guilds.fetch(process.env.guildId);
+        const channel = guild.channels.cache.get(channelId);
+        if (!channel) return res.status(404).json({ message: 'Ticket não encontrado.' });
+        
+        const embed = new EmbedBuilder()
+            .setColor('#2ECC71')
+            .setAuthor({ name: `Resposta da Equipe (${req.session.username})` })
+            .setDescription(content);
+        
+        await channel.send({ embeds: [embed] });
+        res.status(200).json({ message: 'Resposta enviada.' });
+    } catch (error) {
+        res.status(500).json({ message: "Falha ao enviar resposta." });
     }
 });
 
@@ -181,20 +213,18 @@ client.on('interactionCreate', async interaction => {
     if (interaction.isChatInputCommand()) {
         const command = client.commands.get(interaction.commandName);
         if (!command) return;
-        try {
-            await command.execute(interaction);
-        } catch (error) {
-            console.error(error);
-            await interaction.reply({ content: 'Ocorreu um erro!', ephemeral: true });
-        }
+        try { await command.execute(interaction); } 
+        catch (error) { console.error(error); await interaction.reply({ content: 'Ocorreu um erro!', ephemeral: true }); }
     }
     if (interaction.isButton()) {
         if (interaction.customId === 'open-ticket') {
             await interaction.deferReply({ ephemeral: true });
             try {
+                const settings = readSettings();
                 const ticketChannel = await interaction.guild.channels.create({
                     name: `ticket-${interaction.user.username.substring(0, 20)}`,
                     type: ChannelType.GuildText,
+                    parent: settings.ticketCategoryId,
                     permissionOverwrites: [
                         { id: interaction.guild.id, deny: [PermissionsBitField.Flags.ViewChannel] },
                         { id: interaction.user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages, PermissionsBitField.Flags.ReadMessageHistory] },
@@ -206,7 +236,7 @@ client.on('interactionCreate', async interaction => {
                 await interaction.editReply({ content: `✅ Seu ticket foi criado com sucesso em ${ticketChannel}` });
             } catch (error) {
                 console.error("Erro ao criar ticket:", error);
-                await interaction.editReply({ content: '❌ Não foi possível criar seu ticket. Verifique as permissões do bot.' });
+                await interaction.editReply({ content: '❌ Não foi possível criar seu ticket. Verifique as configurações no painel.' });
             }
         }
     }

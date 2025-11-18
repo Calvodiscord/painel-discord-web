@@ -1,38 +1,45 @@
 document.addEventListener('DOMContentLoaded', () => {
-    const channelSelect = document.getElementById('channel-select');
-    const form = document.querySelector('form');
+    // Seletores dos elementos
+    const settingsForm = document.getElementById('settings-form');
+    const ticketSetupForm = document.getElementById('ticket-setup-form');
     const responseDiv = document.getElementById('response');
+    
+    const prefixInput = document.getElementById('prefix-input');
+    const logChannelSelect = document.getElementById('channel-select');
+    const panelChannelSelect = document.getElementById('ticket-channel-select');
+    const categorySelect = document.getElementById('ticket-category-select');
 
-    let currentSettings = {};
-
-    // Função para buscar canais e configurações atuais
+    // Função para buscar dados e popular os selects
     async function initializeConfig() {
         try {
-            // Busca as configurações atuais primeiro
-            const settingsRes = await fetch('/api/settings');
-            currentSettings = await settingsRes.json();
+            // Realiza todas as buscas de dados em paralelo para mais eficiência
+            const [settingsRes, textChannelsRes, categoriesRes] = await Promise.all([
+                fetch('/api/settings'),
+                fetch('/api/channels?type=text'),
+                fetch('/api/channels?type=category')
+            ]);
+            
+            const settings = await settingsRes.json();
+            const textChannels = await textChannelsRes.json();
+            const categories = await categoriesRes.json();
 
-            // Busca a lista de canais de texto
-            const channelsRes = await fetch('/api/channels');
-            const channels = await channelsRes.json();
+            // Função auxiliar para popular um elemento <select>
+            const populateSelect = (select, options, selectedId, defaultText) => {
+                select.innerHTML = `<option value="">${defaultText}</option>`;
+                options.forEach(opt => {
+                    const option = document.createElement('option');
+                    option.value = opt.id;
+                    option.textContent = opt.name;
+                    if (opt.id === selectedId) option.selected = true;
+                    select.appendChild(option);
+                });
+            };
 
-            channelSelect.innerHTML = ''; // Limpa o "carregando"
-
-            if (channels.length === 0) {
-                channelSelect.innerHTML = '<option value="">Nenhum canal de texto encontrado</option>';
-                return;
-            }
-
-            channels.forEach(channel => {
-                const option = document.createElement('option');
-                option.value = channel.id;
-                option.textContent = `#${channel.name}`;
-                // Seleciona o canal que está salvo atualmente
-                if (channel.id === currentSettings.punishmentChannelId) {
-                    option.selected = true;
-                }
-                channelSelect.appendChild(option);
-            });
+            // Preenche os campos com os valores salvos
+            prefixInput.value = settings.prefix || '';
+            populateSelect(logChannelSelect, textChannels, settings.punishmentChannelId, 'Selecione um canal de log');
+            populateSelect(panelChannelSelect, textChannels, settings.ticketPanelChannelId, 'Selecione um canal para o painel');
+            populateSelect(categorySelect, categories, settings.ticketCategoryId, 'Selecione uma categoria para os tickets');
 
         } catch (error) {
             console.error("Erro ao inicializar configurações:", error);
@@ -43,28 +50,55 @@ document.addEventListener('DOMContentLoaded', () => {
 
     initializeConfig();
 
-    // Evento para salvar as configurações
-    form.addEventListener('submit', async (e) => {
+    // Evento para salvar as configurações gerais
+    settingsForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const selectedChannelId = channelSelect.value;
+        const data = {
+            prefix: prefixInput.value,
+            punishmentChannelId: logChannelSelect.value
+        };
         
         responseDiv.textContent = 'Salvando...';
         responseDiv.className = 'response-box visible';
 
-        try {
-            const response = await fetch('/api/settings/save', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ punishmentChannelId: selectedChannelId })
-            });
+        const response = await fetch('/api/settings/save', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
 
-            const result = await response.json();
-            responseDiv.textContent = result.message;
-            responseDiv.classList.add(response.ok ? 'success' : 'error');
+        const result = await response.json();
+        responseDiv.textContent = result.message;
+        responseDiv.classList.add(response.ok ? 'success' : 'error');
+    });
+    
+    // Evento para criar/atualizar o painel de ticket
+    ticketSetupForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const data = {
+            ticketPanelChannelId: panelChannelSelect.value,
+            ticketCategoryId: categorySelect.value
+        };
+        
+        responseDiv.textContent = 'Configurando painel...';
+        responseDiv.className = 'response-box visible';
 
-        } catch (error) {
-            responseDiv.textContent = 'Erro de comunicação ao salvar.';
-            responseDiv.classList.add('error');
-        }
+        // Primeiro, salva as configurações de canal/categoria no backend
+        await fetch('/api/settings/save', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+
+        // Depois, envia um pedido para o bot criar a mensagem no canal selecionado
+        const response = await fetch('/api/setup-ticket', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ channelId: data.ticketPanelChannelId })
+        });
+        
+        const result = await response.json();
+        responseDiv.textContent = result.message;
+        responseDiv.classList.add(response.ok ? 'success' : 'error');
     });
 });

@@ -1,7 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
     const ticketListDiv = document.getElementById('ticket-list');
     const modal = document.getElementById('ticket-modal');
-    if (!modal) return; // Sai se o modal não existir na página (ex: em outras páginas)
+    if (!modal || !ticketListDiv) return;
 
     const modalChannelName = document.getElementById('modal-channel-name');
     const chatHistory = document.getElementById('chat-history');
@@ -14,7 +14,6 @@ document.addEventListener('DOMContentLoaded', () => {
     let activeChannelId = null;
     let pollingInterval = null;
 
-    // Função para buscar e exibir mensagens de um ticket
     async function fetchMessages(channelId) {
         try {
             const response = await fetch(`/api/tickets/${channelId}/messages`);
@@ -23,7 +22,7 @@ document.addEventListener('DOMContentLoaded', () => {
             messages.forEach(msg => {
                 const msgElement = document.createElement('div');
                 msgElement.className = 'chat-message';
-                msgElement.innerHTML = `<div class="author">${msg.author}</div><div class="content">${msg.content}</div>`;
+                msgElement.innerHTML = `<div class="author">${msg.author}</div><div class="content">${msg.content.replace(/\n/g, '<br>')}</div>`;
                 chatHistory.appendChild(msgElement);
             });
             chatHistory.scrollTop = chatHistory.scrollHeight;
@@ -33,7 +32,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Abre o modal de chat
     async function openModal(channelId, channelName) {
         activeChannelId = channelId;
         modalChannelName.textContent = `#${channelName}`;
@@ -41,17 +39,15 @@ document.addEventListener('DOMContentLoaded', () => {
         chatHistory.innerHTML = '<p>Carregando histórico de mensagens...</p>';
         await fetchMessages(channelId);
         if (pollingInterval) clearInterval(pollingInterval);
-        pollingInterval = setInterval(() => fetchMessages(channelId), 7000); // Verifica por novas mensagens a cada 7 segundos
+        pollingInterval = setInterval(() => fetchMessages(channelId), 7000);
     }
 
-    // Fecha o modal de chat
     function closeModal() {
         modal.classList.remove('visible');
         activeChannelId = null;
         if (pollingInterval) clearInterval(pollingInterval);
     }
     
-    // Função para buscar e exibir a lista de tickets abertos
     async function fetchAndDisplayTickets() {
         try {
             ticketListDiv.innerHTML = '<p>Carregando tickets abertos...</p>';
@@ -80,7 +76,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     
-    // Adiciona o event listener na lista para abrir o modal
     ticketListDiv.addEventListener('click', (e) => {
         const ticketItem = e.target.closest('.ticket-item');
         if (ticketItem) {
@@ -89,7 +84,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Enviar resposta pelo formulário do modal
     replyForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const content = replyInput.value.trim();
@@ -111,7 +105,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Adicionar Link
     addLinkBtn.addEventListener('click', () => {
         const url = prompt("Digite a URL completa do link (ex: https://google.com):");
         if (!url || !url.startsWith('http')) {
@@ -128,7 +121,6 @@ document.addEventListener('DOMContentLoaded', () => {
         replyInput.focus();
     });
 
-    // Responder com IA
     aiReplyBtn.addEventListener('click', async () => {
         if (!activeChannelId) return;
         aiReplyBtn.textContent = '🤖 Pensando...';
@@ -151,14 +143,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Event listeners para fechar o modal
     closeModalBtn.addEventListener('click', closeModal);
     modal.addEventListener('click', (e) => {
         if (e.target === modal) {
             closeModal();
         }
     });
-
-    // Inicia a busca inicial de tickets
+    
     fetchAndDisplayTickets();
 });

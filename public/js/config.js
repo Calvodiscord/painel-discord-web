@@ -8,10 +8,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const panelChannelSelect = document.getElementById('ticket-channel-select');
     const categorySelect = document.getElementById('ticket-category-select');
 
-    // Função para buscar dados e popular os selects
     async function initializeConfig() {
         try {
-            // Realiza todas as buscas de dados em paralelo para mais eficiência
             const [settingsRes, textChannelsRes, categoriesRes] = await Promise.all([
                 fetch('/api/settings'),
                 fetch('/api/channels?type=text'),
@@ -26,7 +24,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const textChannels = await textChannelsRes.json();
             const categories = await categoriesRes.json();
 
-            // Função auxiliar para popular um elemento <select>
             const populateSelect = (select, options, selectedId, defaultText) => {
                 select.innerHTML = `<option value="">${defaultText}</option>`;
                 options.forEach(opt => {
@@ -38,7 +35,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             };
 
-            // Preenche os campos com os valores salvos
             prefixInput.value = settings.prefix || '';
             populateSelect(logChannelSelect, textChannels, settings.punishmentChannelId, 'Selecione um canal de log');
             populateSelect(panelChannelSelect, textChannels, settings.ticketPanelChannelId, 'Selecione um canal para o painel');
@@ -53,7 +49,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     initializeConfig();
 
-    // Evento para salvar as configurações gerais
     settingsForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const data = {
@@ -75,7 +70,6 @@ document.addEventListener('DOMContentLoaded', () => {
         responseDiv.classList.add(response.ok ? 'success' : 'error');
     });
     
-    // Evento para criar/atualizar o painel de ticket
     ticketSetupForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const data = {
@@ -86,14 +80,12 @@ document.addEventListener('DOMContentLoaded', () => {
         responseDiv.textContent = 'Configurando painel...';
         responseDiv.className = 'response-box visible';
 
-        // Primeiro, salva as configurações de canal/categoria no backend
         await fetch('/api/settings/save', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
         });
 
-        // Depois, envia um pedido para o bot criar a mensagem no canal selecionado
         const response = await fetch('/api/setup-ticket', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },

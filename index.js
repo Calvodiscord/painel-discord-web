@@ -10,11 +10,17 @@ const { generateAiResponse } = require('./ai-helper.js');
 const app = express();
 const port = process.env.PORT || 3000;
 const client = new Client({
-    intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers]
+    intents: [
+        GatewayIntentBits.Guilds,
+        GatewayIntentBits.GuildMembers,
+        GatewayIntentBits.GuildMessages,
+        GatewayIntentBits.MessageContent // Necessário para a IA ler a mensagem do usuário
+    ]
 });
 const settingsPath = path.join(__dirname, 'settings.json');
 const usersPath = path.join(__dirname, 'users.json');
 
+// Carregador de Comandos de Barra
 client.commands = new Collection();
 const commandsPath = path.join(__dirname, 'commands');
 if (fs.existsSync(commandsPath)) {
@@ -22,21 +28,31 @@ if (fs.existsSync(commandsPath)) {
     for (const file of commandFiles) {
         const filePath = path.join(commandsPath, file);
         const command = require(filePath);
-        client.commands.set(command.data.name, command);
+        if ('data' in command && 'execute' in command) {
+            client.commands.set(command.data.name, command);
+        }
     }
 }
 
 // --- FUNÇÕES DE AJUDA ---
 function readSettings() {
     try {
-        if (fs.existsSync(settingsPath)) { return JSON.parse(fs.readFileSync(settingsPath, 'utf8')); }
-    } catch (error) { console.error("Erro ao ler settings.json:", error); }
+        if (fs.existsSync(settingsPath)) {
+            return JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+        }
+    } catch (error) {
+        console.error("Erro ao ler settings.json:", error);
+    }
+    // Retorna o padrão da variável de ambiente se o arquivo não existir ou falhar
     return { punishmentChannelId: process.env.punishment_channel_id };
 }
+
 function writeSettings(data) {
     try {
         fs.writeFileSync(settingsPath, JSON.stringify(data, null, 2), 'utf8');
-    } catch (error) { console.error("Erro ao salvar settings.json:", error); }
+    } catch (error) {
+        console.error("Erro ao salvar settings.json:", error);
+    }
 }
 
 // --- 2. MIDDLEWARES DO EXPRESS ---
@@ -44,11 +60,11 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(session({
-    store: new FileStore({ path: './sessions', logFn: function(){} }),
+    store: new FileStore({ path: './sessions', logFn: function() {} }),
     secret: process.env.SESSION_SECRET || 'um-segredo-muito-forte-e-aleatorio',
     resave: false,
     saveUninitialized: true,
-    cookie: { 
+    cookie: {
         secure: 'auto',
         maxAge: 1000 * 60 * 60 * 24 // Duração da sessão: 1 dia
     }
@@ -194,6 +210,23 @@ app.get('/api/tickets', checkAuth, async (req, res) => {
     res.json(tickets);
 });
 
+app.post('/api/tickets/close', checkAuth, async (req, res) => {
+    try {
+        const { channelId } = req.body;
+        const guild = await client.guilds.fetch(process.env.guildId);
+        const channel = guild.channels.cache.get(channelId);
+        if (channel) {
+            await channel.delete(`Ticket fechado por ${req.session.username} via painel.`);
+            res.status(200).json({ message: 'Ticket fechado com sucesso.' });
+        } else {
+            res.status(404).json({ message: 'Canal do ticket não encontrado.' });
+        }
+    } catch (error) {
+        console.error("Erro ao fechar ticket via API:", error);
+        res.status(500).json({ message: 'Falha ao fechar o ticket.' });
+    }
+});
+
 app.get('/api/tickets/:channelId/messages', checkAuth, async (req, res) => {
     try {
         const guild = await client.guilds.fetch(process.env.guildId);
@@ -247,6 +280,21 @@ app.post('/api/tickets/ai-reply', checkAuth, async (req, res) => {
 
 
 // --- 5. EVENTOS DO BOT ---
+
+client.on('messageCreate', async message => {
+    if (message.author.bot || !message.channel.name.startsWith('ticket-ai-')) return;
+    const messages = await message.channel.messages.fetch({ limit: 2 });
+    if (messages.size > 1) return;
+    try {
+        await message.channel.sendTyping();
+        const aiResponse = await generateAiResponse(message.content);
+        const responseEmbed = new EmbedBuilder().setColor("#2ECC71").setAuthor({ name: "Assistente de IA 🤖" }).setDescription(aiResponse).setFooter({ text: "Se isso não resolver, um membro da equipe irá ajudá-lo." });
+        await message.channel.send({ embeds: [responseEmbed] });
+    } catch (error) {
+        console.error("Erro na resposta interativa da IA:", error);
+    }
+});
+
 client.on('interactionCreate', async interaction => {
     if (interaction.isChatInputCommand()) {
         const command = client.commands.get(interaction.commandName);
@@ -255,58 +303,63 @@ client.on('interactionCreate', async interaction => {
         catch (error) { console.error(error); await interaction.reply({ content: 'Ocorreu um erro!', ephemeral: true }); }
     }
     if (interaction.isButton()) {
-        if (!interaction.customId.startsWith('open-ticket')) return;
-
-        await interaction.deferReply({ ephemeral: true });
+        const { customId } = interaction;
         const settings = readSettings();
-        const category = settings.ticketCategoryId;
-        
-        try {
-            const channelName = `ticket-${interaction.user.username.substring(0, 20)}`;
-            const existingChannel = interaction.guild.channels.cache.find(c => c.name.startsWith('ticket-') && c.topic === interaction.user.id);
-            if (existingChannel) {
-                return interaction.editReply(`⚠️ Você já possui um ticket aberto em ${existingChannel}.`);
-            }
 
-            if (!category || !interaction.guild.channels.cache.get(category)) {
-                return interaction.editReply('❌ A categoria para criar tickets não foi configurada. Contate um administrador.');
-            }
+        if (customId === 'close-ticket-discord') {
+            await interaction.reply({ content: '🔒 Fechando este ticket em 5 segundos...', ephemeral: true });
+            setTimeout(() => interaction.channel.delete('Ticket fechado.').catch(console.error), 5000);
+            return;
+        }
 
-            const ticketChannel = await interaction.guild.channels.create({
-                name: channelName, type: ChannelType.GuildText, parent: category, topic: interaction.user.id,
-                permissionOverwrites: [
-                    { id: interaction.guild.id, deny: [PermissionsBitField.Flags.ViewChannel] },
-                    { id: interaction.user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages, PermissionsBitField.Flags.ReadMessageHistory] },
-                    { id: process.env.STAFF_ROLE_ID, allow: [PermissionsBitField.Flags.ViewChannel] }
-                ],
-            });
-            
-            await interaction.editReply(`✅ Seu ticket foi criado com sucesso em ${ticketChannel}`);
-            
-            const baseEmbed = new EmbedBuilder().setColor('#5865F2').setDescription(`Olá ${interaction.user}, bem-vindo ao seu ticket!`);
-
-            switch (interaction.customId) {
-                case 'open-ticket-normal':
-                    await ticketChannel.send({ embeds: [baseEmbed.addFields({ name: 'Próximo Passo', value: 'Um membro da equipe estará com você em breve.'})] });
-                    break;
+        if (customId.startsWith('open-ticket')) {
+            await interaction.deferReply({ ephemeral: true });
+            try {
+                const category = settings.ticketCategoryId;
+                const existingChannel = interaction.guild.channels.cache.find(c => c.topic === interaction.user.id);
+                if (existingChannel) {
+                    return interaction.editReply(`⚠️ Você já possui um ticket aberto em ${existingChannel}.`);
+                }
+                if (!category || !interaction.guild.channels.cache.get(category)) {
+                    return interaction.editReply('❌ A categoria para tickets não foi configurada. Contate um administrador.');
+                }
                 
-                case 'open-ticket-ai':
-                    await ticketChannel.send({ embeds: [baseEmbed.addFields({ name: 'Assistente de IA', value: 'Nosso assistente de IA está analisando sua solicitação...' })] });
-                    const aiResponse = await generateAiResponse(`O usuário ${interaction.user.tag} abriu um ticket pedindo ajuda.`);
-                    await ticketChannel.send({ embeds: [new EmbedBuilder().setColor("#2ECC71").setAuthor({ name: "Assistente de IA 🤖" }).setDescription(aiResponse)] });
-                    break;
+                const isAiTicket = customId === 'open-ticket-ai';
+                const channelName = `${isAiTicket ? 'ticket-ai' : 'ticket'}-${interaction.user.username.substring(0, 20)}`;
+                const ticketChannel = await interaction.guild.channels.create({
+                    name: channelName, type: ChannelType.GuildText, parent: category, topic: interaction.user.id,
+                    permissionOverwrites: [
+                        { id: interaction.guild.id, deny: [PermissionsBitField.Flags.ViewChannel] },
+                        { id: interaction.user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages, PermissionsBitField.Flags.ReadMessageHistory] },
+                        { id: process.env.STAFF_ROLE_ID, allow: [PermissionsBitField.Flags.ViewChannel] }
+                    ],
+                });
+                await interaction.editReply(`✅ Seu ticket foi criado com sucesso em ${ticketChannel}`);
+                
+                const closeButton = new ButtonBuilder().setCustomId('close-ticket-discord').setLabel('Fechar Ticket').setStyle(ButtonStyle.Danger).setEmoji('🔒');
+                const row = new ActionRowBuilder().addComponents(closeButton);
+                const baseEmbed = new EmbedBuilder().setColor('#5865F2').setDescription(`Olá ${interaction.user}, bem-vindo ao seu ticket!`);
 
-                case 'open-ticket-staff':
-                    const staffPing = process.env.STAFF_ROLE_ID ? `<@&${process.env.STAFF_ROLE_ID}>` : 'A equipe de suporte';
-                    await ticketChannel.send({
-                        content: `${staffPing}, ${interaction.user} solicitou suporte urgente!`,
-                        embeds: [baseEmbed.setColor('#E74C3C').addFields({ name: 'Atenção Urgente', value: 'A equipe foi notificada e estará com você o mais rápido possível.' })]
-                    });
-                    break;
+                switch (customId) {
+                    case 'open-ticket-normal':
+                        await ticketChannel.send({ embeds: [baseEmbed.addFields({ name: 'Próximo Passo', value: 'Um membro da equipe estará com você em breve.'})], components: [row] });
+                        break;
+                    case 'open-ticket-ai':
+                        await ticketChannel.send({ embeds: [new EmbedBuilder().setColor("#2ECC71").setAuthor({ name: "Assistente de IA 🤖" }).setDescription(`Olá ${interaction.user}! Sou um assistente de IA. Por favor, descreva seu problema em detalhes para que eu possa tentar ajudar.`)], components: [row] });
+                        break;
+                    case 'open-ticket-staff':
+                        const staffPing = process.env.STAFF_ROLE_ID ? `<@&${process.env.STAFF_ROLE_ID}>` : 'A equipe de suporte';
+                        await ticketChannel.send({
+                            content: `${staffPing}, ${interaction.user} solicitou suporte urgente!`,
+                            embeds: [baseEmbed.setColor('#E74C3C').addFields({ name: 'Atenção Urgente', value: 'A equipe foi notificada e estará com você o mais rápido possível.' })],
+                            components: [row]
+                        });
+                        break;
+                }
+            } catch (error) {
+                console.error("Erro ao processar botão de ticket:", error);
+                await interaction.editReply({ content: '❌ Ocorreu um erro ao criar seu ticket.' });
             }
-        } catch (error) {
-            console.error("Erro ao processar botão de ticket:", error);
-            await interaction.editReply({ content: '❌ Ocorreu um erro ao criar seu ticket. Verifique as permissões do bot.' });
         }
     }
 });

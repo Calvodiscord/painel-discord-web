@@ -11,10 +11,10 @@ const genAI = apiKey ? new GoogleGenerativeAI(apiKey) : null;
 
 /**
  * Gera uma resposta de suporte usando a IA do Google Gemini.
- * @param {string} chatHistory - O histórico de mensagens do ticket.
+ * @param {string} userProblem - A pergunta ou problema do usuário.
  * @returns {Promise<string>} Uma resposta sugerida pela IA.
  */
-async function generateAiResponse(chatHistory) {
+async function generateAiResponse(userProblem) {
     // Se a chave de API não estiver configurada, retorna uma mensagem padrão.
     if (!genAI) {
         return "O serviço de IA não está configurado. Por favor, aguarde um atendente humano.";
@@ -23,7 +23,7 @@ async function generateAiResponse(chatHistory) {
     try {
         const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-        const prompt = `Você é um assistente de suporte inteligente e amigável para um servidor do Discord. Sua função é resolver problemas comuns. Analise o seguinte histórico de um ticket e forneça uma resposta útil, educada e concisa para o usuário em português. Se a pergunta for complexa ou exigir ação de um moderador, instrua o usuário a aguardar um membro da equipe. Histórico do chat:\n\n${chatHistory}\n\nResposta sugerida:`;
+        const prompt = `Você é um assistente de suporte inteligente e amigável para um servidor do Discord. Sua função é resolver problemas comuns. Analise o seguinte problema de um usuário e forneça uma resposta útil, educada e concisa para o usuário em português. Se o problema for complexo ou exigir ação de um moderador (como verificação de logs, punições, etc.), instrua o usuário a aguardar um membro da equipe. Problema do usuário:\n\n"${userProblem}"\n\nResposta sugerida:`;
 
         const result = await model.generateContent(prompt);
         const response = await result.response;

@@ -8,6 +8,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const replyForm = document.getElementById('reply-form');
     const replyInput = document.getElementById('reply-input');
     const closeModalBtn = document.querySelector('.close-modal-btn');
+    const closeTicketBtnModal = document.querySelector('.close-ticket-btn-modal');
     const aiReplyBtn = document.getElementById('ai-reply-btn');
     const addLinkBtn = document.getElementById('add-link-btn');
     
@@ -108,7 +109,7 @@ document.addEventListener('DOMContentLoaded', () => {
     addLinkBtn.addEventListener('click', () => {
         const url = prompt("Digite a URL completa do link (ex: https://google.com):");
         if (!url || !url.startsWith('http')) {
-            if(url) alert("URL inválida. Por favor, inclua http:// ou https://");
+            if (url) alert("URL inválida. Por favor, inclua http:// ou https://");
             return;
         }
         const selectionStart = replyInput.selectionStart;
@@ -116,7 +117,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const linkText = replyInput.value.substring(selectionStart, selectionEnd) || "Clique aqui";
         const markdownLink = `[${linkText}](${url})`;
         const textBefore = replyInput.value.substring(0, selectionStart);
-        const textAfter  = replyInput.value.substring(selectionEnd, replyInput.value.length);
+        const textAfter = replyInput.value.substring(selectionEnd, replyInput.value.length);
         replyInput.value = textBefore + markdownLink + textAfter;
         replyInput.focus();
     });
@@ -140,6 +141,32 @@ document.addEventListener('DOMContentLoaded', () => {
         } finally {
             aiReplyBtn.textContent = '🤖 Responder com IA';
             aiReplyBtn.disabled = false;
+        }
+    });
+
+    closeTicketBtnModal.addEventListener('click', async () => {
+        if (!activeChannelId) return;
+        if (!confirm('Você tem certeza que deseja fechar este ticket? Esta ação não pode ser desfeita.')) return;
+
+        closeTicketBtnModal.textContent = 'Fechando...';
+        closeTicketBtnModal.disabled = true;
+        try {
+            const response = await fetch('/api/tickets/close', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ channelId: activeChannelId })
+            });
+            if (response.ok) {
+                closeModal();
+                fetchAndDisplayTickets();
+            } else {
+                alert('Falha ao fechar o ticket. Verifique as permissões do bot.');
+            }
+        } catch (error) {
+            console.error("Erro ao fechar ticket:", error);
+        } finally {
+            closeTicketBtnModal.textContent = '🔒 Fechar Ticket';
+            closeTicketBtnModal.disabled = false;
         }
     });
 

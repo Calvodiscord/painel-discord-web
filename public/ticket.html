@@ -11,10 +11,24 @@
     <div class="container">
         <h1>Tickets Abertos</h1>
         <h2>Gerencie os tickets de suporte do servidor</h2>
-        <div id="ticket-list">
-            <p>Carregando tickets...</p>
+        <div id="ticket-list"><p>Carregando tickets...</p></div>
+    </div>
+
+    <!-- Modal para visualização de tickets -->
+    <div class="modal-overlay" id="ticket-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modal-channel-name"></h3>
+                <button class="close-modal-btn">&times;</button>
+            </div>
+            <div class="chat-history" id="chat-history"></div>
+            <form id="reply-form">
+                <input type="text" id="reply-input" placeholder="Digite sua resposta..." required>
+                <button type="submit">Enviar</button>
+            </form>
         </div>
     </div>
+
     <script src="/js/main.js"></script>
     <script src="/js/ticket.js"></script>
 </body>

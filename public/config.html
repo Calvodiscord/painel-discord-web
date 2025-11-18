@@ -10,13 +10,24 @@
     <div class="nav-container"></div>
     <div class="container">
         <h1>Configurações do Servidor</h1>
-        <h2>Defina as preferências do bot</h2>
-        <form>
+        <form id="settings-form">
+            <h2>Geral</h2>
+            <label for="prefix-input">Prefixo (para comandos de mensagem)</label>
+            <input type="text" id="prefix-input" name="prefix" placeholder="Ex: !">
+            
+            <h2>Logs</h2>
             <label for="channel-select">Canal de Logs de Punição</label>
-            <select id="channel-select" name="punishmentChannelId" required>
-                <option value="" disabled selected>Carregando canais...</option>
-            </select>
+            <select id="channel-select" name="punishmentChannelId"><option>Carregando...</option></select>
             <button type="submit">Salvar Configurações</button>
+        </form>
+        <hr style="border-color: var(--border-color); margin: 30px 0;">
+        <form id="ticket-setup-form">
+            <h2>Painel de Ticket</h2>
+            <label for="ticket-channel-select">Canal para criar o painel "Abrir Ticket"</label>
+            <select id="ticket-channel-select" name="panelChannelId"><option>Carregando...</option></select>
+            <label for="ticket-category-select">Categoria para criar novos tickets</label>
+            <select id="ticket-category-select" name="ticketCategoryId"><option>Carregando...</option></select>
+            <button type="submit">Criar/Atualizar Painel de Ticket</button>
         </form>
         <div id="response" class="response-box"></div>
     </div>

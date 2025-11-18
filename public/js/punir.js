@@ -3,6 +3,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const form = document.querySelector('form');
     const responseDiv = document.getElementById('response');
 
+    // Função para buscar e popular a lista de membros do servidor
     async function fetchAndPopulateMembers() {
         try {
             const response = await fetch('/api/members');
@@ -13,8 +14,9 @@ document.addEventListener('DOMContentLoaded', () => {
             
             const members = await response.json();
             
-            memberSelect.innerHTML = '';
+            memberSelect.innerHTML = ''; // Limpa a opção "Carregando..."
             
+            // Adiciona a opção padrão "Selecione um membro"
             const defaultOption = document.createElement('option');
             defaultOption.value = "";
             defaultOption.textContent = "Selecione um membro da lista";
@@ -22,10 +24,11 @@ document.addEventListener('DOMContentLoaded', () => {
             defaultOption.selected = true;
             memberSelect.appendChild(defaultOption);
 
+            // Adiciona cada membro à lista
             members.forEach(member => {
                 const option = document.createElement('option');
-                option.value = member.id;
-                option.textContent = member.tag;
+                option.value = member.id; // Usamos o ID do usuário, que é único
+                option.textContent = member.tag; // Exibe o nome e a tag (ex: Usuario#1234)
                 memberSelect.appendChild(option);
             });
 
@@ -35,10 +38,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     
+    // Inicia a busca de membros assim que a página carrega
     fetchAndPopulateMembers();
 
+    // Evento que dispara quando o formulário de punição é enviado
     form.addEventListener('submit', async (e) => {
-        e.preventDefault();
+        e.preventDefault(); // Impede que a página recarregue
         const formData = new FormData(form);
         const data = Object.fromEntries(formData.entries());
         
@@ -46,6 +51,7 @@ document.addEventListener('DOMContentLoaded', () => {
         responseDiv.className = 'response-box visible';
 
         try {
+            // Envia os dados para a API no backend
             const response = await fetch('/api/punir', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -57,7 +63,8 @@ document.addEventListener('DOMContentLoaded', () => {
             responseDiv.classList.add(response.ok ? 'success' : 'error');
             
             if (response.ok) {
-                form.reset();
+                form.reset(); // Limpa o formulário
+                // Reseta a seleção de membro para o padrão
                 const placeholder = memberSelect.querySelector('option[disabled]');
                 if (placeholder) placeholder.selected = true;
             }

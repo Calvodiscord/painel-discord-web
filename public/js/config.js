@@ -1,13 +1,17 @@
 document.addEventListener('DOMContentLoaded', () => {
     const settingsForm = document.getElementById('settings-form');
     const ticketSetupForm = document.getElementById('ticket-setup-form');
-    const responseDiv = document.getElementById('response');
     
+    // Se os formulários não existem na página, não faz nada
+    if (!settingsForm || !ticketSetupForm) return;
+
+    const responseDiv = document.getElementById('response');
     const prefixInput = document.getElementById('prefix-input');
     const logChannelSelect = document.getElementById('channel-select');
     const panelChannelSelect = document.getElementById('ticket-channel-select');
     const categorySelect = document.getElementById('ticket-category-select');
 
+    // Função para buscar dados e popular os selects
     async function initializeConfig() {
         try {
             const [settingsRes, textChannelsRes, categoriesRes] = await Promise.all([
@@ -49,6 +53,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     initializeConfig();
 
+    // Evento para salvar as configurações gerais
     settingsForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const data = {
@@ -70,6 +75,7 @@ document.addEventListener('DOMContentLoaded', () => {
         responseDiv.classList.add(response.ok ? 'success' : 'error');
     });
     
+    // Evento para criar/atualizar o painel de ticket
     ticketSetupForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const data = {

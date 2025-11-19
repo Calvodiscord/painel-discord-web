@@ -1,16 +1,15 @@
 document.addEventListener('DOMContentLoaded', () => {
     const sidebarContainer = document.getElementById('sidebar-container');
-    if (!sidebarContainer) return; // Se o container da sidebar não existir na página, o script para.
+    const menuToggle = document.querySelector('.menu-toggle');
+    const overlay = document.querySelector('.overlay');
 
-    // Pega o caminho da URL atual para saber qual link do menu deve ser marcado como "ativo"
+    if (!sidebarContainer) return;
+
+    // Constrói a barra lateral (código anterior)
     const currentPage = window.location.pathname;
-    
-    // ATENÇÃO: Troque os valores abaixo pelos dados do seu servidor.
-    // Você pode pegar o link do ícone clicando com o botão direito no ícone do seu servidor no Discord e "Copiar Link da Imagem".
     const serverName = "TURMA DA MÔNICA";
-    const serverIcon = "https://cdn.discordapp.com/icons/1437362647690383402/a_example.png"; // Troque pelo link real
+    const serverIcon = "https://i.imgur.com/link-do-seu-icone.png"; // Troque pelo link real
 
-    // O HTML completo da barra lateral, com ícones da Font Awesome
     const sidebarHTML = `
         <div class="sidebar-header">
             <img src="${serverIcon}" alt="Ícone do Servidor">
@@ -46,7 +45,18 @@ document.addEventListener('DOMContentLoaded', () => {
             <a href="/logout"><i class="fa-solid fa-right-from-bracket"></i> Sair</a>
         </div>
     `;
-
-    // Insere o HTML da barra lateral no elemento <aside> da página.
     sidebarContainer.innerHTML = sidebarHTML;
+
+    // NOVA LÓGICA: Controla a abertura/fechamento do menu mobile
+    function toggleMenu() {
+        sidebarContainer.classList.toggle('active');
+        overlay.classList.toggle('active');
+    }
+
+    if (menuToggle && overlay) {
+        // Clicar no botão hambúrguer abre/fecha o menu
+        menuToggle.addEventListener('click', toggleMenu);
+        // Clicar no fundo escuro (overlay) fecha o menu
+        overlay.addEventListener('click', toggleMenu);
+    }
 });

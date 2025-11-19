@@ -5,16 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tickets - Painel de Moderação</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
 <body>
-    <div class="nav-container"></div>
-    <div class="container">
-        <h1>Tickets Abertos</h1>
-        <h2>Gerencie os tickets de suporte do servidor</h2>
-        <div id="ticket-list"><p>Carregando tickets...</p></div>
-    </div>
-
-    <!-- Modal para visualização de tickets -->
+    <aside class="sidebar" id="sidebar-container"></aside>
+    <main class="main-content">
+        <div class="container">
+            <h1>Tickets Abertos</h1>
+            <h2>Gerencie os tickets de suporte do servidor</h2>
+            <div id="ticket-list"><p>Carregando tickets...</p></div>
+        </div>
+    </main>
+    <!-- O modal fica fora do main-content para sobrepor tudo -->
     <div class="modal-overlay" id="ticket-modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -35,7 +37,6 @@
             </form>
         </div>
     </div>
-
     <script src="/js/main.js"></script>
     <script src="/js/ticket.js"></script>
 </body>

@@ -138,25 +138,46 @@ app.post('/api/punir', checkAuth, async (req, res) => {
         if (!member) return res.status(404).json({ message: 'Membro não encontrado.' });
         if (!punishmentChannel) return res.status(404).json({ message: 'Canal de log não configurado.' });
         
-        const embed = new EmbedBuilder().setColor('#E74C3C').setTitle('⚖️ Ação de Moderação Registrada').addFields(
-            { name: '👤 Membro Punido', value: member.user.tag, inline: true },
-            { name: '👮‍♂️ Aplicado por', value: moderator, inline: true },
-            { name: '⚖️ Ação', value: punishment.charAt(0).toUpperCase() + punishment.slice(1), inline: true },
-            { name: '📜 Motivo', value: reason }
-        ).setTimestamp();
+        const embed = new EmbedBuilder()
+            .addFields(
+                { name: '👤 Membro', value: member.user.tag, inline: true },
+                { name: '👮‍♂️ Aplicado por', value: moderator, inline: true },
+                { name: '⚖️ Ação', value: punishment.charAt(0).toUpperCase() + punishment.slice(1), inline: true },
+                { name: '📜 Motivo', value: reason }
+            ).setTimestamp();
         
         if (evidence) embed.addFields({ name: '📸 Evidência', value: `[Clique para ver](${evidence})` });
 
-        if (punishment === 'timeout') {
-            const minutes = parseInt(duration);
-            if (!minutes || minutes <= 0 || isNaN(minutes)) return res.status(400).json({ message: 'Duração inválida.' });
-            await member.timeout(minutes * 60 * 1000, reason);
-            embed.addFields({ name: '⏳ Duração', value: `${minutes} minuto(s)` });
-        } else if (punishment === 'kick') { await member.kick(reason); } 
-        else if (punishment === 'ban') { await member.ban({ reason: reason }); }
+        switch (punishment) {
+            case 'aviso':
+                embed.setColor('#FEE75C');
+                embed.setTitle('⚠️ Advertência Registrada');
+                break;
+            case 'timeout':
+                embed.setColor('#E67E22');
+                embed.setTitle('⏳ Membro Silenciado');
+                const minutes = parseInt(duration);
+                if (!minutes || minutes <= 0 || isNaN(minutes)) return res.status(400).json({ message: 'Duração inválida para silenciar.' });
+                await member.timeout(minutes * 60 * 1000, reason);
+                embed.addFields({ name: 'Duração', value: `${minutes} minuto(s)` });
+                break;
+            case 'kick':
+                embed.setColor('#E74C3C');
+                embed.setTitle('👢 Membro Expulso');
+                await member.kick(reason);
+                break;
+            case 'ban':
+                embed.setColor('#992D22');
+                embed.setTitle('🚫 Membro Banido');
+                await member.ban({ reason: reason });
+                break;
+            default:
+                return res.status(400).json({ message: 'Tipo de punição inválida.' });
+        }
 
         await punishmentChannel.send({ embeds: [embed] });
-        res.status(200).json({ message: `Sucesso! ${member.user.tag} foi punido.` });
+        res.status(200).json({ message: `Sucesso! A ação de '${punishment}' foi registrada para ${member.user.tag}.` });
+
     } catch (error) {
         console.error('ERRO AO PUNIR:', error);
         res.status(500).json({ message: 'Erro interno. Verifique as permissões do bot.' });

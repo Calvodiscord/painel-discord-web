@@ -31,6 +31,8 @@ body {
     padding: 20px;
     display: flex;
     flex-direction: column;
+    z-index: 1002;
+    transition: transform 0.3s ease-in-out;
 }
 .sidebar-header { text-align: center; margin-bottom: 30px; }
 .sidebar-header img { width: 80px; height: 80px; border-radius: 50%; margin-bottom: 10px; }
@@ -71,6 +73,7 @@ body {
     margin-left: 260px;
     width: calc(100% - 260px);
     padding: 30px;
+    transition: margin-left 0.3s ease-in-out, width 0.3s ease-in-out;
 }
 .container {
     background-color: var(--surface-color);
@@ -79,7 +82,7 @@ body {
     max-width: 800px;
     margin: 0 auto;
 }
-.login-container { margin: 10vh auto; } /* Centraliza container de login */
+.login-container { margin: 10vh auto; }
 
 /* ESTILOS GERAIS (h1, form, etc.) */
 h1 { margin-bottom: 10px; font-weight: 600; }
@@ -112,3 +115,61 @@ button:hover { background-color: var(--primary-hover); }
 .command-item { background-color: var(--bg-main); padding: 15px; border-radius: 5px; border-left: 3px solid var(--primary-color); }
 .command-name { font-family: 'Courier New', Courier, monospace; font-size: 1.1rem; font-weight: 700; color: var(--text-color); }
 .command-description { color: var(--text-muted); margin-top: 5px; }
+
+/* --- ESTILOS PARA O CABEÇALHO E MENU MOBILE --- */
+.mobile-header {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    background-color: var(--bg-dark);
+    padding: 10px 15px;
+    z-index: 1001;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+.menu-toggle {
+    background: none;
+    border: none;
+    color: var(--text-color);
+    font-size: 1.5rem;
+    cursor: pointer;
+}
+.overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.5);
+    z-index: 1000;
+    opacity: 0;
+    transition: opacity 0.3s ease-in-out;
+}
+.overlay.active {
+    display: block;
+    opacity: 1;
+}
+
+/* --- MEDIA QUERY PARA TELAS MENORES (CELULARES) --- */
+@media screen and (max-width: 992px) {
+    .mobile-header {
+        display: block;
+    }
+    .sidebar {
+        transform: translateX(-100%); /* Esconde a sidebar fora da tela por padrão */
+    }
+    .sidebar.active {
+        transform: translateX(0); /* Mostra a sidebar quando ativa */
+    }
+    .main-content {
+        margin-left: 0; /* Remove a margem da sidebar */
+        width: 100%;
+        padding: 20px;
+        padding-top: 70px; /* Espaço para o header mobile */
+    }
+    .container {
+        padding: 20px;
+    }
+}

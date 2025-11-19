@@ -4,16 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Punições - Painel de Moderação</title>
-    <!-- Link para a folha de estilo principal -->
     <link rel="stylesheet" href="style.css">
-    <!-- Link para a biblioteca de ícones Font Awesome (essencial para o menu) -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
 <body>
-    <!-- A barra lateral de navegação será injetada aqui pelo main.js -->
+    <div class="overlay"></div>
+    <header class="mobile-header">
+        <button class="menu-toggle"><i class="fa-solid fa-bars"></i></button>
+    </header>
+
     <aside class="sidebar" id="sidebar-container"></aside>
 
-    <!-- Conteúdo principal da página -->
     <main class="main-content">
         <div class="container">
             <h1>Painel de Punição</h1>
@@ -27,6 +28,7 @@
 
                 <label for="punishment">Tipo de Punição</label>
                 <select id="punishment" name="punishment">
+                    <option value="aviso">⚠️ Aviso</option>
                     <option value="timeout">Silenciar (Timeout)</option>
                     <option value="kick">Expulsar (Kick)</option>
                     <option value="ban">Banir (Ban)</option>
@@ -44,12 +46,10 @@
                 <button type="submit">Aplicar Punição</button>
             </form>
 
-            <!-- Div para mostrar mensagens de sucesso ou erro -->
             <div id="response" class="response-box"></div>
         </div>
     </main>
 
-    <!-- Scripts que controlam a página -->
     <script src="/js/main.js"></script>
     <script src="/js/punir.js"></script>
 </body>

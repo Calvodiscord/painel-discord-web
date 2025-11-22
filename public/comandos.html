@@ -14,7 +14,40 @@
             <h1>Lista de Comandos</h1>
             <h2>Todos os comandos de barra (/) disponíveis no bot.</h2>
             <div id="command-list" class="command-list">
-                <p>Carregando comandos...</p>
+                <!-- Comandos de Moderação -->
+                <div class="command-item">
+                    <p class="command-name">/punir</p>
+                    <p class="command-description">Aplica uma punição a um membro (aviso, silenciar, expulsar, banir).</p>
+                    <p class="command-usage">Uso: /punir [membro] [tipo] [motivo] [duração?]</p>
+                </div>
+                <div class="command-item">
+                    <p class="command-name">/limpar</p>
+                    <p class="command-description">Apaga um número específico de mensagens de um canal (até 100 por vez).</p>
+                    <p class="command-usage">Uso: /limpar [quantidade]</p>
+                </div>
+
+                <!-- Comandos de Informação -->
+                <div class="command-item">
+                    <p class="command-name">/serverinfo</p>
+                    <p class="command-description">Mostra informações detalhadas sobre o servidor, como data de criação, número de membros e canais.</p>
+                </div>
+                <div class="command-item">
+                    <p class="command-name">/userinfo</p>
+                    <p class="command-description">Mostra informações detalhadas sobre um membro, como data de entrada e cargos.</p>
+                    <p class="command-usage">Uso: /userinfo [membro]</p>
+                </div>
+
+                <!-- Comandos de Utilidade -->
+                <div class="command-item">
+                    <p class="command-name">/enquete</p>
+                    <p class="command-description">Cria uma enquete simples para que os membros possam votar com reações.</p>
+                    <p class="command-usage">Uso: /enquete [pergunta]</p>
+                </div>
+                 <div class="command-item">
+                    <p class="command-name">/sorteio</p>
+                    <p class="command-description">Inicia um sorteio interativo no servidor.</p>
+                    <p class="command-usage">Uso: /sorteio [duração] [prêmio]</p>
+                </div>
             </div>
         </div>
     </main>

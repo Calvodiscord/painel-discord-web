@@ -1,62 +1,55 @@
 document.addEventListener('DOMContentLoaded', () => {
     const sidebarContainer = document.getElementById('sidebar-container');
-    const menuToggle = document.querySelector('.menu-toggle');
-    const overlay = document.querySelector('.overlay');
+    if (sidebarContainer) {
+        // O caminho para a logo. Crie uma pasta 'img' em 'public' e coloque sua logo lá.
+        const logoUrl = '/img/logo.png'; 
 
-    if (!sidebarContainer) return;
+        const sidebarHTML = `
+            <div class="sidebar-header">
+                <img src="${logoUrl}" alt="Logo do Servidor">
+                <h2>Painel de Controle</h2>
+            </div>
+            <nav class="sidebar-nav">
+                <div class="nav-group">
+                    <h3>Principal</h3>
+                    <a href="/punir.html" class="nav-item" id="nav-punir"><i class="fa-solid fa-gavel"></i> Início</a>
+                    <a href="/comandos.html" class="nav-item" id="nav-comandos"><i class="fa-solid fa-terminal"></i> Comandos</a>
+                </div>
+                <div class="nav-group">
+                    <h3>Gerenciamento</h3>
+                    <a href="/config.html" class="nav-item" id="nav-config"><i class="fa-solid fa-sliders"></i> Configurações</a>
+                    <a href="/ticket.html" class="nav-item" id="nav-ticket"><i class="fa-solid fa-ticket"></i> Tickets</a>
+                </div>
+            </nav>
+            <div class="sidebar-footer">
+                <a href="/logout"><i class="fa-solid fa-right-from-bracket"></i> Sair</a>
+            </div>
+        `;
+        sidebarContainer.innerHTML = sidebarHTML;
 
-    // Constrói a barra lateral (código anterior)
-    const currentPage = window.location.pathname;
-    const serverName = "TURMA DA MÔNICA";
-    const serverIcon = "https://i.imgur.com/link-do-seu-icone.png"; // Troque pelo link real
-
-    const sidebarHTML = `
-        <div class="sidebar-header">
-            <img src="${serverIcon}" alt="Ícone do Servidor">
-            <h2>${serverName}</h2>
-        </div>
-        <nav class="sidebar-nav">
-            <div class="nav-group">
-                <h3>GERAL</h3>
-                <a href="/comandos.html" class="${currentPage.includes('comandos') ? 'active' : ''}">
-                    <i class="fa-solid fa-terminal"></i> Comandos
-                </a>
-            </div>
-            <div class="nav-group">
-                <h3>MODERAÇÃO</h3>
-                <a href="/punir.html" class="${currentPage.includes('punir') ? 'active' : ''}">
-                    <i class="fa-solid fa-gavel"></i> Punições
-                </a>
-            </div>
-            <div class="nav-group">
-                <h3>UTILITÁRIOS</h3>
-                <a href="/ticket.html" class="${currentPage.includes('ticket') ? 'active' : ''}">
-                    <i class="fa-solid fa-life-ring"></i> Tickets
-                </a>
-            </div>
-            <div class="nav-group">
-                <h3>ADMIN</h3>
-                <a href="/config.html" class="${currentPage.includes('config') ? 'active' : ''}">
-                    <i class="fa-solid fa-gears"></i> Configurações
-                </a>
-            </div>
-        </nav>
-        <div class="sidebar-footer">
-            <a href="/logout"><i class="fa-solid fa-right-from-bracket"></i> Sair</a>
-        </div>
-    `;
-    sidebarContainer.innerHTML = sidebarHTML;
-
-    // NOVA LÓGICA: Controla a abertura/fechamento do menu mobile
-    function toggleMenu() {
-        sidebarContainer.classList.toggle('active');
-        overlay.classList.toggle('active');
+        // Adiciona a classe 'active' ao link da página atual para destacá-lo
+        const currentPage = window.location.pathname.split('/').pop() || 'punir.html';
+        const navId = `nav-${currentPage.split('.')[0]}`;
+        const activeNavItem = document.getElementById(navId);
+        if (activeNavItem) {
+            activeNavItem.classList.add('active');
+        }
     }
 
-    if (menuToggle && overlay) {
-        // Clicar no botão hambúrguer abre/fecha o menu
-        menuToggle.addEventListener('click', toggleMenu);
-        // Clicar no fundo escuro (overlay) fecha o menu
-        overlay.addEventListener('click', toggleMenu);
+    // Lógica para ativar e desativar o menu mobile (em telas menores)
+    const menuToggle = document.querySelector('.menu-toggle');
+    const sidebar = document.querySelector('.sidebar');
+    const overlay = document.querySelector('.overlay');
+
+    if (menuToggle && sidebar && overlay) {
+        menuToggle.addEventListener('click', () => {
+            sidebar.classList.toggle('active');
+            overlay.classList.toggle('active');
+        });
+
+        overlay.addEventListener('click', () => {
+            sidebar.classList.remove('active');
+            overlay.classList.remove('active');
+        });
     }
 });

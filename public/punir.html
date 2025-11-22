@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Punições - Painel de Moderação</title>
+    <title>Início - Painel de Moderação</title>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
@@ -17,10 +17,26 @@
 
     <main class="main-content">
         <div class="container">
-            <h1>Painel de Punição</h1>
-            <h2>Aplique sanções aos membros do servidor de forma rápida e registrada.</h2>
+            <h1>Painel Principal</h1>
+            <h2>Visão geral do servidor e ações de moderação.</h2>
+
+            <div class="stats-board" id="stats-board">
+                <div class="stat-card">
+                    <h3>Total de Membros</h3>
+                    <p id="total-members">...</p>
+                </div>
+                <div class="stat-card">
+                    <h3>Membros</h3>
+                    <p id="human-members">...</p>
+                </div>
+                <div class="stat-card">
+                    <h3>Bots</h3>
+                    <p id="bot-members">...</p>
+                </div>
+            </div>
             
             <form>
+                <h2>Painel de Punição</h2>
                 <label for="username">Selecione o Membro</label>
                 <select id="username" name="userId" required>
                     <option value="" disabled selected>Carregando membros...</option>

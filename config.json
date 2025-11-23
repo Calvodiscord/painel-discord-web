@@ -1,6 +1,0 @@
-// painel-discord-web-main/config.json
-
-{
-  "clientId": "COLOQUE_O_ID_DO_SEU_BOT_AQUI",
-  "guildId": "COLOQUE_O_ID_DO_SEU_SERVIDOR_AQUI"
-}
